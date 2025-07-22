@@ -165,7 +165,12 @@
   </style>
 </head>
 <body>
-  <h2>낚시리그 점수표</h2>
+  <div style="display:flex;align-items:center;justify-content:space-between;max-width:480px;margin:24px auto 0 auto;padding:0 16px;">
+    <h2 style="margin:0;">낚시리그 점수표</h2>
+    <button id="summaryBtn" title="집계" style="background:none;border:none;cursor:pointer;padding:0;margin-left:8px;outline:none;">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="8"/><rect x="9" y="8" width="4" height="12"/><rect x="15" y="4" width="4" height="16"/></svg>
+    </button>
+  </div>
   <div class="container">
     <div class="info-bar">
       <span class="player-count" id="playerCountText">인원수: 1</span>
@@ -175,6 +180,17 @@
     </div>
     <div class="table-wrap" id="scoreTableContainer"></div>
   </div>
+  <!-- 집계 모달 -->
+  <div id="summaryModal" style="display:none;position:fixed;z-index:1000;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);justify-content:center;align-items:center;">
+    <div style="background:#fff;border-radius:12px;max-width:95vw;width:370px;padding:24px 16px 16px 16px;box-shadow:0 2px 16px rgba(0,0,0,0.18);position:relative;">
+      <button onclick="closeSummaryModal()" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:#888;">&times;</button>
+      <h3 style="margin:0 0 12px 0;text-align:center;font-size:1.2rem;">최종 집계 결과</h3>
+      <div id="summaryResult" style="margin-bottom:16px;"></div>
+      <button id="saveImageBtn" style="width:100%;background:#2563eb;color:#fff;font-weight:bold;font-size:1.05rem;padding:10px 0;border:none;border-radius:6px;cursor:pointer;">사진파일 저장</button>
+    </div>
+  </div>
+  <!-- html2canvas 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>
     const STORAGE_KEY = 'fishing-league-score-table-v1';
     let currentRowCount = 1;
@@ -366,6 +382,56 @@
         localStorage.removeItem(STORAGE_KEY);
         createTable(1);
       }
+    }
+    // 집계 버튼 이벤트
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('summaryBtn').onclick = showSummaryModal;
+      document.getElementById('saveImageBtn').onclick = saveSummaryImage;
+    });
+
+    function showSummaryModal() {
+      const table = document.querySelector('#scoreTableContainer table');
+      if (!table) return;
+      const rows = table.querySelectorAll('tbody tr');
+      let results = [];
+      rows.forEach((row, idx) => {
+        const name = row.querySelector('.name').value || `참가자${idx+1}`;
+        const round1 = parseInt(row.querySelector('.round1').value, 10) || 0;
+        const round2 = parseInt(row.querySelector('.round2').value, 10) || 0;
+        const round3 = parseInt(row.querySelector('.round3').value, 10) || 0;
+        const total = parseInt(row.querySelector('.totalSum').textContent, 10) || 0;
+        const rank = row.querySelector('.rank').textContent;
+        results.push({ name, round1, round2, round3, total, rank: parseInt(rank,10) });
+      });
+      results = results.sort((a,b)=>a.rank-b.rank);
+      let html = '<div id="summaryTableImgTarget"><table style="width:100%;border-collapse:collapse;font-size:1rem;">'+
+        '<tr>'+
+        '<th style="border-bottom:1px solid #ddd;padding:4px 0;width:10%;">순위</th>'+
+        '<th style="border-bottom:1px solid #ddd;padding:4px 0;width:30%;">이름</th>'+
+        '<th style="border-bottom:1px solid #ddd;padding:4px 0;width:12%;">1R</th>'+
+        '<th style="border-bottom:1px solid #ddd;padding:4px 0;width:12%;">2R</th>'+
+        '<th style="border-bottom:1px solid #ddd;padding:4px 0;width:12%;">3R</th>'+
+        '<th style="border-bottom:1px solid #ddd;padding:4px 0;width:14%;">합계</th>'+
+        '</tr>';
+      results.forEach(r=>{
+        html += `<tr><td style="padding:4px 0;width:10%;">${r.rank}</td><td style="padding:4px 0;width:30%;">${r.name}</td><td style="padding:4px 0;width:12%;">${r.round1}</td><td style="padding:4px 0;width:12%;">${r.round2}</td><td style="padding:4px 0;width:12%;">${r.round3}</td><td style="padding:4px 0;width:14%;">${r.total}</td></tr>`;
+      });
+      html += '</table></div>';
+      document.getElementById('summaryResult').innerHTML = html;
+      document.getElementById('summaryModal').style.display = 'flex';
+    }
+    function closeSummaryModal() {
+      document.getElementById('summaryModal').style.display = 'none';
+    }
+    function saveSummaryImage() {
+      const target = document.getElementById('summaryTableImgTarget');
+      if (!target) return;
+      html2canvas(target, {backgroundColor: '#fff'}).then(function(canvas) {
+        const link = document.createElement('a');
+        link.download = '낚시리그_최종집계.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
     }
   </script>
 </body>
