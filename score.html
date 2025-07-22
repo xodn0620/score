@@ -110,24 +110,33 @@
       }
       .table-wrap {
         width: 100vw;
-        min-width: 600px;
+        min-width: unset;
       }
       table {
-        font-size: 0.95rem;
+        font-size: 0.78rem;
         border-radius: 0;
         box-shadow: none;
-        table-layout: auto;
-        width: 100vw;
-        min-width: 600px;
+        table-layout: fixed;
+        width: 100%;
+        min-width: unset;
       }
       th, td {
-        padding: 7px 2px;
-        font-size: 0.95rem;
-        min-width: 60px;
+        padding: 3px 1px;
+        font-size: 0.78rem;
+        min-width: unset;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 12.5%;
+      }
+      td input[type="number"], td input[type="text"] {
+        width: 95%;
+        font-size: 0.78rem;
+        padding: 2px 1px;
+        min-width: 0;
       }
       body, html {
-        overflow-x: auto;
+        overflow-x: hidden;
       }
     }
   </style>
