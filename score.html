@@ -56,11 +56,16 @@
       overflow: hidden;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       font-size: 1.05rem;
+      table-layout: fixed;
+      word-break: keep-all;
     }
     th, td {
       border: 1px solid #e5e7eb;
       padding: 10px 4px;
       text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     th {
       background: #f1f5f9;
@@ -84,55 +89,31 @@
     }
     @media (max-width: 600px) {
       .container {
-        padding: 4px;
+        padding: 2px;
+        max-width: 100vw;
+      }
+      table {
+        font-size: 0.95rem;
+        border-radius: 0;
+        box-shadow: none;
+        table-layout: auto;
+        width: 100vw;
+        min-width: 600px;
+      }
+      th, td {
+        padding: 7px 2px;
+        font-size: 0.95rem;
+        min-width: 60px;
+        white-space: nowrap;
       }
       .info-bar {
         flex-direction: column;
         align-items: stretch;
         gap: 6px;
       }
-      table, thead, tbody, th, td, tr {
-        display: block;
+      body, html {
+        overflow-x: auto;
       }
-      thead {
-        display: none;
-      }
-      tr {
-        margin-bottom: 16px;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-        padding: 8px 0;
-      }
-      td {
-        border: none;
-        border-bottom: 1px solid #e5e7eb;
-        position: relative;
-        padding-left: 40%;
-        min-height: 36px;
-        text-align: left;
-      }
-      td:last-child {
-        border-bottom: none;
-      }
-      td:before {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-weight: bold;
-        color: #888;
-        font-size: 0.98rem;
-        white-space: nowrap;
-      }
-      td:nth-child(1):before { content: "순번"; }
-      td:nth-child(2):before { content: "이름"; }
-      td:nth-child(3):before { content: "1라운드"; }
-      td:nth-child(4):before { content: "2라운드"; }
-      td:nth-child(5):before { content: "중간"; }
-      td:nth-child(6):before { content: "3라운드"; }
-      td:nth-child(7):before { content: "최종"; }
-      td:nth-child(8):before { content: "순위"; }
     }
   </style>
 </head>
@@ -154,7 +135,7 @@
       const count = typeof initCount === 'number' ? initCount : 1;
       currentRowCount = count;
       updatePlayerCountText();
-      let html = '<table><thead><tr>' +
+      let html = '<div style="overflow-x:auto;"><table><thead><tr>' +
         '<th>순번</th>' +
         '<th>이름</th>' +
         '<th>1라운드</th>' +
@@ -167,7 +148,7 @@
       for (let i = 0; i < count; i++) {
         html += generateRowHtml(i + 1);
       }
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       document.getElementById('scoreTableContainer').innerHTML = html;
       updateScores();
     }
