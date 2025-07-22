@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>점수표</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif;
+      background: #f8fafc;
+      margin: 0;
+      padding: 0;
+    }
+    h2 {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 2rem;
+      color: #222;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .player-count {
+      font-size: 1.08rem;
+      color: #222;
+      font-weight: 500;
+      text-align: left;
+    }
+    .add-row-btn {
+      font-size: 1.05rem;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 6px;
+      background: #10b981;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .add-row-btn:hover {
+      background: #059669;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      font-size: 1.05rem;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 10px 4px;
+      text-align: center;
+    }
+    th {
+      background: #f1f5f9;
+      color: #222;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+    td input[type="number"], td input[type="text"] {
+      width: 90%;
+      font-size: 1.1rem;
+      padding: 6px 4px;
+      border-radius: 5px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      box-sizing: border-box;
+    }
+    .highlight {
+      background: #e0f2fe;
+      font-weight: bold;
+      color: #2563eb;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 4px;
+      }
+      .info-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead {
+        display: none;
+      }
+      tr {
+        margin-bottom: 16px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        padding: 8px 0;
+      }
+      td {
+        border: none;
+        border-bottom: 1px solid #e5e7eb;
+        position: relative;
+        padding-left: 40%;
+        min-height: 36px;
+        text-align: left;
+      }
+      td:last-child {
+        border-bottom: none;
+      }
+      td:before {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-weight: bold;
+        color: #888;
+        font-size: 0.98rem;
+        white-space: nowrap;
+      }
+      td:nth-child(1):before { content: "순번"; }
+      td:nth-child(2):before { content: "이름"; }
+      td:nth-child(3):before { content: "1라운드"; }
+      td:nth-child(4):before { content: "2라운드"; }
+      td:nth-child(5):before { content: "중간"; }
+      td:nth-child(6):before { content: "3라운드"; }
+      td:nth-child(7):before { content: "최종"; }
+      td:nth-child(8):before { content: "순위"; }
+    }
+  </style>
+</head>
+<body>
+  <h2>점수표</h2>
+  <div class="container">
+    <div class="info-bar">
+      <span class="player-count" id="playerCountText">인원수: 1</span>
+      <button class="add-row-btn" onclick="addRow()">추가</button>
+    </div>
+    <div id="scoreTableContainer"></div>
+  </div>
+  <script>
+    let currentRowCount = 1;
+    window.onload = function() {
+      createTable(1);
+    };
+    function createTable(initCount) {
+      const count = typeof initCount === 'number' ? initCount : 1;
+      currentRowCount = count;
+      updatePlayerCountText();
+      let html = '<table><thead><tr>' +
+        '<th>순번</th>' +
+        '<th>이름</th>' +
+        '<th>1라운드</th>' +
+        '<th>2라운드</th>' +
+        '<th>중간</th>' +
+        '<th>3라운드</th>' +
+        '<th>최종</th>' +
+        '<th>순위</th>' +
+        '</tr></thead><tbody>';
+      for (let i = 0; i < count; i++) {
+        html += generateRowHtml(i + 1);
+      }
+      html += '</tbody></table>';
+      document.getElementById('scoreTableContainer').innerHTML = html;
+      updateScores();
+    }
+    function generateRowHtml(num) {
+      return `<tr>
+        <td class="row-num">${num}</td>
+        <td><input type="text" class="name" placeholder="이름"></td>
+        <td><input type="number" class="round1" min="0" oninput="updateScores()"></td>
+        <td><input type="number" class="round2" min="0" oninput="updateScores()"></td>
+        <td class="midSum highlight">0</td>
+        <td><input type="number" class="round3" min="0" oninput="updateScores()"></td>
+        <td class="totalSum highlight">0</td>
+        <td class="rank">-</td>
+      </tr>`;
+    }
+    function addRow() {
+      const table = document.querySelector('#scoreTableContainer table tbody');
+      if (!table) {
+        createTable(1);
+        return;
+      }
+      currentRowCount++;
+      table.insertAdjacentHTML('beforeend', generateRowHtml(currentRowCount));
+      updateRowNumbers();
+      updateScores();
+      updatePlayerCountText();
+    }
+    function updateRowNumbers() {
+      const rows = document.querySelectorAll('#scoreTableContainer table tbody tr');
+      rows.forEach((row, idx) => {
+        const numCell = row.querySelector('.row-num');
+        if (numCell) numCell.textContent = idx + 1;
+      });
+      currentRowCount = rows.length;
+    }
+    function updatePlayerCountText() {
+      document.getElementById('playerCountText').textContent = `인원수: ${currentRowCount}`;
+    }
+    function updateScores() {
+      const table = document.querySelector('#scoreTableContainer table');
+      if (!table) return;
+      const rows = table.querySelectorAll('tbody tr');
+      let scores = [];
+      rows.forEach((row, idx) => {
+        const round1 = parseInt(row.querySelector('.round1').value, 10) || 0;
+        const round2 = parseInt(row.querySelector('.round2').value, 10) || 0;
+        const round3 = parseInt(row.querySelector('.round3').value, 10) || 0;
+        const midSum = round1 + round2;
+        const totalSum = midSum + round3;
+        row.querySelector('.midSum').textContent = midSum;
+        row.querySelector('.totalSum').textContent = totalSum;
+        scores.push({ idx, totalSum, round3, round2, round1 });
+      });
+      scores.sort((a, b) => {
+        if (b.totalSum !== a.totalSum) return b.totalSum - a.totalSum;
+        if (b.round3 !== a.round3) return b.round3 - a.round3;
+        if (b.round2 !== a.round2) return b.round2 - a.round2;
+        return b.round1 - a.round1;
+      });
+      let prevScore = null, prevRank = 0, skip = 0;
+      scores.forEach((s, i) => {
+        if (
+          prevScore &&
+          prevScore.totalSum === s.totalSum &&
+          prevScore.round3 === s.round3 &&
+          prevScore.round2 === s.round2 &&
+          prevScore.round1 === s.round1
+        ) {
+          skip++;
+        } else {
+          prevRank = i + 1;
+          skip = 0;
+        }
+        prevScore = s;
+        rows[s.idx].querySelector('.rank').textContent = prevRank;
+      });
+      updateRowNumbers();
+      updatePlayerCountText();
+    }
+  </script>
+</body>
+</html> 
