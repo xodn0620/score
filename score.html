@@ -38,20 +38,36 @@
       text-align: left;
       flex: 1;
     }
-    .add-row-btn {
+    .add-row-btn, .delete-row-btn, .reset-btn {
       font-size: 1.05rem;
       padding: 8px 18px;
       border: none;
       border-radius: 6px;
-      background: #10b981;
-      color: #fff;
       font-weight: bold;
       cursor: pointer;
       transition: background 0.2s;
       margin-left: 8px;
     }
+    .add-row-btn {
+      background: #10b981;
+      color: #fff;
+    }
     .add-row-btn:hover {
       background: #059669;
+    }
+    .delete-row-btn {
+      background: #fbbf24;
+      color: #fff;
+    }
+    .delete-row-btn:hover {
+      background: #f59e42;
+    }
+    .reset-btn {
+      background: #f87171;
+      color: #fff;
+    }
+    .reset-btn:hover {
+      background: #dc2626;
     }
     .table-wrap {
       width: 100%;
@@ -149,20 +165,23 @@
   </style>
 </head>
 <body>
-  <h2>점수표</h2>
+  <h2>낚시리그 점수표</h2>
   <div class="container">
     <div class="info-bar">
       <span class="player-count" id="playerCountText">인원수: 1</span>
       <button class="add-row-btn" onclick="addRow()">추가</button>
+      <button class="delete-row-btn" onclick="deleteRow()">삭제</button>
+      <button class="reset-btn" onclick="resetTable()">초기화</button>
     </div>
     <div class="table-wrap" id="scoreTableContainer"></div>
   </div>
   <script>
+    const STORAGE_KEY = 'fishing-league-score-table-v1';
     let currentRowCount = 1;
     window.onload = function() {
-      createTable(1);
+      loadTableFromStorage();
     };
-    function createTable(initCount) {
+    function createTable(initCount, dataArr) {
       const count = typeof initCount === 'number' ? initCount : 1;
       currentRowCount = count;
       updatePlayerCountText();
@@ -177,35 +196,62 @@
         '<th>순위</th>' +
         '</tr></thead><tbody>';
       for (let i = 0; i < count; i++) {
-        html += generateRowHtml(i + 1);
+        const rowData = dataArr && dataArr[i] ? dataArr[i] : {};
+        html += generateRowHtml(i + 1, rowData);
       }
       html += '</tbody></table>';
       document.getElementById('scoreTableContainer').innerHTML = html;
+      setInputEvents();
       updateScores();
     }
-    function generateRowHtml(num) {
+    function generateRowHtml(num, rowData = {}) {
       return `<tr>
         <td class="row-num">${num}</td>
-        <td><input type="text" class="name" placeholder="이름"></td>
-        <td><input type="number" class="round1" min="0" oninput="updateScores()"></td>
-        <td><input type="number" class="round2" min="0" oninput="updateScores()"></td>
+        <td><input type="text" class="name" placeholder="이름" value="${rowData.name || ''}"></td>
+        <td><input type="number" class="round1" min="0" value="${rowData.round1 !== undefined ? rowData.round1 : ''}" ></td>
+        <td><input type="number" class="round2" min="0" value="${rowData.round2 !== undefined ? rowData.round2 : ''}" ></td>
         <td class="midSum highlight">0</td>
-        <td><input type="number" class="round3" min="0" oninput="updateScores()"></td>
+        <td><input type="number" class="round3" min="0" value="${rowData.round3 !== undefined ? rowData.round3 : ''}" ></td>
         <td class="totalSum highlight">0</td>
         <td class="rank">-</td>
       </tr>`;
+    }
+    function setInputEvents() {
+      const table = document.querySelector('#scoreTableContainer table');
+      if (!table) return;
+      table.querySelectorAll('input').forEach(input => {
+        input.oninput = function() {
+          updateScores();
+          saveTableToStorage();
+        };
+      });
     }
     function addRow() {
       const table = document.querySelector('#scoreTableContainer table tbody');
       if (!table) {
         createTable(1);
+        saveTableToStorage();
         return;
       }
       currentRowCount++;
       table.insertAdjacentHTML('beforeend', generateRowHtml(currentRowCount));
       updateRowNumbers();
+      setInputEvents();
       updateScores();
       updatePlayerCountText();
+      saveTableToStorage();
+    }
+    function deleteRow() {
+      const table = document.querySelector('#scoreTableContainer table tbody');
+      if (!table) return;
+      const rows = table.querySelectorAll('tr');
+      if (rows.length <= 1) return; // 1개 남았을 때는 삭제하지 않음
+      table.removeChild(rows[rows.length - 1]);
+      updateRowNumbers();
+      setInputEvents();
+      updateScores();
+      updatePlayerCountText();
+      saveTableToStorage();
     }
     function updateRowNumbers() {
       const rows = document.querySelectorAll('#scoreTableContainer table tbody tr');
@@ -223,23 +269,50 @@
       if (!table) return;
       const rows = table.querySelectorAll('tbody tr');
       let scores = [];
+      let midScores = [];
       rows.forEach((row, idx) => {
         const round1 = parseInt(row.querySelector('.round1').value, 10) || 0;
         const round2 = parseInt(row.querySelector('.round2').value, 10) || 0;
         const round3 = parseInt(row.querySelector('.round3').value, 10) || 0;
         const midSum = round1 + round2;
         const totalSum = midSum + round3;
-        row.querySelector('.midSum').textContent = midSum;
+        row.querySelector('.midSum').textContent = midSum; // 임시, 아래에서 괄호+순위로 덮어씀
         row.querySelector('.totalSum').textContent = totalSum;
         scores.push({ idx, totalSum, round3, round2, round1 });
+        midScores.push({ idx, midSum, round2 });
       });
+      // 중간순위 계산 (midSum, 동점시 round2 큰 순)
+      midScores.sort((a, b) => {
+        if (b.midSum !== a.midSum) return b.midSum - a.midSum;
+        return b.round2 - a.round2;
+      });
+      let prevMid = null, prevMidRank = 0, skip = 0;
+      let midRanks = Array(rows.length).fill(0);
+      midScores.forEach((s, i) => {
+        if (prevMid && prevMid.midSum === s.midSum && prevMid.round2 === s.round2) {
+          skip++;
+        } else {
+          prevMidRank = i + 1;
+          skip = 0;
+        }
+        prevMid = s;
+        midRanks[s.idx] = prevMidRank;
+      });
+      // 중간합계 셀에 (중간순위) 표시
+      rows.forEach((row, idx) => {
+        const round1 = parseInt(row.querySelector('.round1').value, 10) || 0;
+        const round2 = parseInt(row.querySelector('.round2').value, 10) || 0;
+        const midSum = round1 + round2;
+        row.querySelector('.midSum').textContent = `${midSum} (${midRanks[idx]})`;
+      });
+      // 최종순위 계산 (기존대로)
       scores.sort((a, b) => {
         if (b.totalSum !== a.totalSum) return b.totalSum - a.totalSum;
         if (b.round3 !== a.round3) return b.round3 - a.round3;
         if (b.round2 !== a.round2) return b.round2 - a.round2;
         return b.round1 - a.round1;
       });
-      let prevScore = null, prevRank = 0, skip = 0;
+      let prevScore = null, prevFinalRank = 0, skip2 = 0;
       scores.forEach((s, i) => {
         if (
           prevScore &&
@@ -248,16 +321,51 @@
           prevScore.round2 === s.round2 &&
           prevScore.round1 === s.round1
         ) {
-          skip++;
+          skip2++;
         } else {
-          prevRank = i + 1;
-          skip = 0;
+          prevFinalRank = i + 1;
+          skip2 = 0;
         }
         prevScore = s;
-        rows[s.idx].querySelector('.rank').textContent = prevRank;
+        rows[s.idx].querySelector('.rank').textContent = prevFinalRank;
       });
       updateRowNumbers();
       updatePlayerCountText();
+      saveTableToStorage();
+    }
+    function getTableData() {
+      const table = document.querySelector('#scoreTableContainer table');
+      if (!table) return [];
+      const rows = table.querySelectorAll('tbody tr');
+      let data = [];
+      rows.forEach(row => {
+        data.push({
+          name: row.querySelector('.name').value,
+          round1: row.querySelector('.round1').value,
+          round2: row.querySelector('.round2').value,
+          round3: row.querySelector('.round3').value
+        });
+      });
+      return data;
+    }
+    function saveTableToStorage() {
+      const data = getTableData();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    function loadTableFromStorage() {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        const arr = JSON.parse(data);
+        createTable(arr.length > 0 ? arr.length : 1, arr);
+      } else {
+        createTable(1);
+      }
+    }
+    function resetTable() {
+      if (confirm('초기화하시겠습니까?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        createTable(1);
+      }
     }
   </script>
 </body>
